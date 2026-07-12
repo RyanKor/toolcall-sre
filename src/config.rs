@@ -36,6 +36,17 @@ pub struct Cli {
     /// Upstream request timeout, in seconds.
     #[arg(long, env = "TCS_TIMEOUT_SECS", default_value_t = 120)]
     pub timeout_secs: u64,
+
+    /// Write a JSONL flight-recorder trace of tool-call behavior to this path
+    /// (one record per processed request). Enables in-harness measurement.
+    #[arg(long, env = "TCS_TRACE_FILE")]
+    pub trace_file: Option<String>,
+
+    /// Header used to correlate multi-turn requests into a session. When absent
+    /// on a request, the session is derived by fingerprinting the conversation
+    /// prefix (system + first user message).
+    #[arg(long, env = "TCS_SESSION_HEADER", default_value = "x-session-id")]
+    pub session_header: String,
 }
 
 /// Resolved configuration shared across the request lifecycle.
@@ -46,6 +57,8 @@ pub struct AppConfig {
     pub max_repair_attempts: u32,
     pub repair_enabled: bool,
     pub timeout: Duration,
+    pub trace_file: Option<String>,
+    pub session_header: String,
 }
 
 impl From<&Cli> for AppConfig {
@@ -56,6 +69,8 @@ impl From<&Cli> for AppConfig {
             max_repair_attempts: cli.max_repair_attempts,
             repair_enabled: !cli.no_repair,
             timeout: Duration::from_secs(cli.timeout_secs),
+            trace_file: cli.trace_file.clone(),
+            session_header: cli.session_header.to_ascii_lowercase(),
         }
     }
 }

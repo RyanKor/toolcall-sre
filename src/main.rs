@@ -5,6 +5,7 @@ mod profiles;
 mod repair;
 mod server;
 mod telemetry;
+mod trace;
 mod upstream;
 mod validate;
 
@@ -18,6 +19,7 @@ use tracing_subscriber::EnvFilter;
 use crate::config::{AppConfig, Cli};
 use crate::server::AppInner;
 use crate::telemetry::Metrics;
+use crate::trace::Recorder;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -35,10 +37,14 @@ async fn main() -> anyhow::Result<()> {
         .build()
         .context("building HTTP client")?;
 
+    let recorder = Recorder::new(cfg.trace_file.as_deref())
+        .with_context(|| format!("opening trace file {:?}", cfg.trace_file))?;
+
     let state = Arc::new(AppInner {
         cfg: cfg.clone(),
         http,
         metrics: Metrics::default(),
+        recorder,
     });
 
     let app = server::router(state);
@@ -52,6 +58,7 @@ async fn main() -> anyhow::Result<()> {
         upstream = %cfg.upstream_base,
         repair = cfg.repair_enabled,
         max_repair_attempts = cfg.max_repair_attempts,
+        trace_file = ?cfg.trace_file,
         "toolcall-sre listening"
     );
 

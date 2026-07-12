@@ -2,18 +2,63 @@
 
 **Reliability engineering for local-LLM tool calls.**
 
-`toolcall-sre` is an OpenAI-compatible reverse proxy that sits in front of any
-local inference endpoint (vLLM, Ollama, SGLang, llama.cpp server) and makes
-tool/function calls *reliable*. Point your agent at `toolcall-sre` instead of the
-raw endpoint and malformed tool calls get tolerantly parsed, schema-validated,
-and auto-repaired — with SRE-style telemetry on the well-formed / repair / failure rates.
+`toolcall-sre` is a small, drop-in **OpenAI-compatible reverse proxy** that sits
+between your agent/harness and any local inference endpoint (vLLM, Ollama, SGLang,
+llama.cpp server). It exists to make **tool calling (function calling) reliable for
+open/local models** — the single most common failure point when you move an agent
+off a frontier API and onto a self-hosted model.
 
-> Why this exists: tool-call reliability compounds across an agent run
-> (95% per-call over 8 steps ≈ 66% end-to-end), and small/local models emit
-> malformed calls far more often than frontier APIs. `toolcall-sre` is a drop-in
-> layer that closes that gap **without fine-tuning the model**.
+You don't change your agent code or fine-tune the model. You point the agent's
+`OPENAI_BASE_URL` at `toolcall-sre` instead of the raw endpoint, and every tool call
+that flows through is parsed, schema-validated, repaired if broken, and measured.
 
-## What it does
+### The problem it solves
+
+- **Tool-call errors compound.** A 95%-per-call success rate over an 8-step agent
+  run is only ~66% end-to-end. One malformed call derails the whole task.
+- **Local/open models are the weak point.** Small and non-tool-tuned models emit
+  malformed or schema-invalid arguments far more often than frontier APIs (prose
+  around the JSON, Markdown fences, trailing commas, wrong types, missing required
+  fields, invalid enums).
+- **You can't see it happening.** Standard benchmarks score a model in isolation;
+  they don't tell you how it behaves *inside your actual harness*, across turns.
+
+### Two roles, one core
+
+The same `parse + validate` engine serves two complementary jobs:
+
+1. **Runtime reliability proxy** — in production, it *fixes* broken tool calls
+   in-flight (tolerant parse → JSON-Schema validation → bounded auto-repair loop),
+   so a weak model's occasional bad call doesn't break the run.
+2. **In-harness measurement sensor** — in evaluation, it *records and scores* how a
+   given model behaves inside a given harness across a full multi-turn task
+   (turns, tool-call sequence, tool-result errors, recovery, end-to-end reliability),
+   without the harness having to cooperate.
+
+Run it with repair on to mitigate, or with `--no-repair` to measure raw behavior.
+
+### Key features
+
+- **Drop-in & framework-agnostic** — one OpenAI-compatible endpoint swap; works with
+  any harness (claude-code, OpenHands, hermes-agent, deepagents, LangGraph, …) and
+  any OpenAI-compatible backend.
+- **Tolerant argument parsing** — recovers JSON from prose, code fences, and trailing
+  commas that `serde_json` would reject.
+- **JSON-Schema validation** — checks arguments against each tool's
+  `function.parameters` schema (types, required fields, enums, patterns).
+- **Bounded auto-repair loop** — on an invalid call, asks the model to correct itself
+  with the schema and the exact validation error, up to `--max-repair-attempts`.
+- **SRE-style telemetry** — Prometheus + JSON SLIs: well-formed rate, repair rate,
+  repair-success rate, failure rate.
+- **In-harness session measurement** — correlates multi-turn requests into sessions
+  and reports per-session behavior + a JSONL flight recorder (see below).
+- **Model-dialect awareness** — labels the model family (qwen/llama/mistral/…) as an
+  extension point for family-specific handling.
+- **Safe by construction** — well-formed calls are only normalized, never altered;
+  streaming and non-JSON requests pass through untouched.
+- **Fast & self-contained** — a single Rust binary (axum + tokio), no runtime deps.
+
+## How the runtime proxy works
 
 For every non-streaming `/v1/chat/completions` response that contains `tool_calls`:
 
@@ -55,14 +100,17 @@ All flags have environment-variable equivalents.
 | `--upstream` | `TCS_UPSTREAM` | `http://127.0.0.1:11434/v1` | Upstream OpenAI-compatible base URL (include `/v1`) |
 | `--api-key` | `TCS_API_KEY` | – | Upstream key when the caller sends none |
 | `--max-repair-attempts` | `TCS_MAX_REPAIR_ATTEMPTS` | `2` | Repair attempts per malformed call |
-| `--no-repair` | `TCS_NO_REPAIR` | `false` | Validate + normalize only, no repair |
+| `--no-repair` | `TCS_NO_REPAIR` | `false` | Validate + normalize only, no repair (pure measurement mode) |
 | `--timeout-secs` | `TCS_TIMEOUT_SECS` | `120` | Upstream request timeout |
+| `--trace-file` | `TCS_TRACE_FILE` | – | Write a JSONL flight-recorder trace (enables in-harness measurement) |
+| `--session-header` | `TCS_SESSION_HEADER` | `x-session-id` | Header used to correlate multi-turn requests into a session |
 
 ### Endpoints
 
 - `POST /v1/chat/completions` — the proxied, reliability-enhanced endpoint.
 - `GET /health` — liveness (`ok`).
-- `GET /metrics` — Prometheus exposition; `?format=json` for a JSON snapshot.
+- `GET /metrics` — Prometheus exposition; `?format=json` adds an `in_harness` summary.
+- `GET /sessions` — per-session in-harness behavior rollup (JSON).
 
 ## Example
 
@@ -85,6 +133,49 @@ repair_success_rate=1.0`.
 
 An end-to-end reproduction (mock upstream + assertions) lives in
 [`scripts/mock_upstream.py`](scripts/mock_upstream.py).
+
+## In-harness measurement (sensor mode)
+
+A standalone benchmark (BFCL, tau-bench) measures a model's *raw* tool-calling.
+It cannot tell you how that model behaves *inside a real harness* (hermes-agent,
+deepagents, claude-code, OpenHands…), where the harness controls tool formatting,
+multi-turn context, and error recovery — and where the same model scores
+differently.
+
+Because the proxy already sits at the tool-call boundary, it can measure this for
+free. A harness drives a task as a *sequence* of `/v1/chat/completions` calls with
+a growing `messages` history; `toolcall-sre` correlates them into a **session**
+(via an explicit `--session-header`, or by fingerprinting the conversation prefix
+when none is sent) and records how the model behaves across the whole run:
+
+- **turns** — how many round-trips the harness needed to finish the task
+- **tool-call sequence** — which tools, in what order
+- **tool-result errors** — errors the harness fed back (from `role:"tool"` messages)
+- **recovery** — a session that hit a tool-result error yet still reached a final answer
+- **end-to-end clean** — the model never emitted a malformed/invalid call across the
+  *whole* run (this is the metric that compounds: 95%-per-call over 8 steps ≈ 66%)
+
+The same `parse + validate` core powers both roles: **repair** (runtime mitigation)
+and **record/score** (measurement). Run with `--no-repair` to measure raw in-harness
+behavior, or with repair on to measure the mitigated behavior.
+
+```bash
+# Measure a real harness loop (writes a JSONL trace)
+toolcall-sre --upstream http://127.0.0.1:8000/v1 \
+             --trace-file ./trace.jsonl
+
+# A minimal 3–4 turn harness simulator (happy path + tool-error recovery)
+python3 scripts/harness_sim.py http://127.0.0.1:8088 <model> happy    task-happy
+python3 scripts/harness_sim.py http://127.0.0.1:8088 <model> recovery task-recovery
+
+curl -s http://127.0.0.1:8088/sessions | jq         # per-session rollup
+curl -s 'http://127.0.0.1:8088/metrics?format=json' # includes in_harness summary
+python3 scripts/print_trace.py ./trace.jsonl        # flight recorder
+```
+
+Example `/sessions` output (real vLLM + qwen3.6-35b): the `recovery` session shows
+`turns=4`, sequence `[get_weather, get_weather, set_reminder]`, `tool_result_errors=1`,
+`reached_final=true` — i.e. the model recovered from a tool error inside the harness loop.
 
 ## Architecture
 
@@ -115,6 +206,7 @@ Module map:
 | `validate.rs` | JSON-Schema compilation & validation |
 | `profiles.rs` | Model dialect detection (extension point) |
 | `telemetry.rs` | Reliability counters / metrics |
+| `trace.rs` | In-harness measurement: session correlation, flight recorder, `/sessions` |
 
 ## Roadmap
 
@@ -127,8 +219,10 @@ Module map:
 
 ## Status
 
-MVP (M0). Non-streaming repair loop is implemented and verified end-to-end.
-Not yet production-hardened (no auth on the proxy itself, single-process metrics).
+MVP (M0). Both the non-streaming repair loop and the in-harness measurement layer
+are implemented and verified end-to-end against a mock upstream and against a real
+vLLM server running `qwen3.6-35b` (Qwen3.6-35B-A3B-AWQ). Not yet production-hardened
+(no auth on the proxy itself, single-process in-memory metrics, non-streaming only).
 
 ## License
 

@@ -41,24 +41,7 @@ const BACKENDS = [
   { alias: 'ollama-qwq',     model: 'qwq:32b',            url: OLLAMA, label: 'Ollama · QwQ 32B', runs: 3 },
 ];
 
-// 시험대가 쓰는 시나리오 목업. 측정 대상은 아니지만 등록되어 있어야 시험대가 동작한다
-// (미등록 별칭은 프록시가 400 으로 거절한다 — 조용히 다른 백엔드로 새지 않기 위함).
-const SCENARIO_MOCK = {
-  alias: 'sim-scenario',
-  base_url: 'http://127.0.0.1:3100/api/mock/v1',
-  label: '모사 · 시나리오 지정',
-  default_model: 'clean',
-};
-
-for (const b of [...BACKENDS, SCENARIO_MOCK]) {
-  if (b.alias === 'sim-scenario') {
-    await fetch(`${PROXY}/admin/upstreams`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(b),
-    }).catch(() => {});
-    continue;
-  }
+for (const b of BACKENDS) {
   await fetch(`${PROXY}/admin/upstreams`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

@@ -80,8 +80,10 @@ export default function Lab() {
   >([]);
   const [upstream, setUpstream] = useState<string>("");
 
-  // The scenarios below only mean anything against a backend that replays them,
-  // so default to the scenario mock rather than whatever `--upstream` points at.
+  // Prefer a backend that replays the scenarios, since that is what the cards
+  // below describe. When none is registered — the usual case once real models
+  // are wired up — fall back to whatever `--upstream` points at and let the
+  // strip above say plainly that these runs hit a real model.
   useEffect(() => {
     fetch("/api/proxy/upstreams", { cache: "no-store" })
       .then((r) => r.json())
@@ -90,8 +92,10 @@ export default function Lab() {
         setUpstreams(list);
         setUpstream((cur) => {
           if (cur) return cur;
-          const scenarioBackend = list.find((u: { alias: string }) => u.alias === "sim-scenario");
-          return scenarioBackend ? scenarioBackend.alias : "";
+          const replays = list.find((u: { base_url?: string }) =>
+            (u.base_url ?? "").includes("/api/mock/"),
+          );
+          return replays ? replays.alias : "";
         });
       })
       .catch(() => {});

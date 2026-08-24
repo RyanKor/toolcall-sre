@@ -2,3 +2,9 @@
 **/*.rs.bk
 *.pdb
 .DS_Store
+*.bak
+
+# Flight-recorder traces and recorded demo footage are artifacts, not sources.
+*.jsonl
+/ui/demo/out/
+/ui/demo/shots/

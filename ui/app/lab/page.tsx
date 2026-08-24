@@ -56,6 +56,12 @@ interface RunResult {
   detail?: string;
 }
 
+/** The `model` value this run actually sent, read straight off the request. */
+function sentModel(result: RunResult): string | null {
+  const sent = result.sent as { model?: unknown } | null;
+  return typeof sent?.model === "string" ? sent.model : null;
+}
+
 function violationCopy(t: ReturnType<typeof useT>) {
   return {
     syntactic: { label: t.violation.syntacticLabel, tone: "warn" as Tone, why: t.violation.syntacticWhy },
@@ -175,6 +181,31 @@ export default function Lab() {
               </p>
             </div>
 
+            <div className="usingbar">
+              <span className="k">{t.lab.using}</span>
+              <Chip tone={isMock ? "info" : "ok"}>
+                {isMock ? t.lab.kindMock : t.lab.kindReal}
+              </Chip>
+              <span className="f">
+                <em>{t.lab.usingBackend}</em>
+                {activeUpstream?.label ?? "—"}
+              </span>
+              <span className="f">
+                <em>{t.lab.usingModel}</em>
+                <span className="mono">
+                  {isMock || !backendModel ? t.lab.usingModelScenario : backendModel}
+                </span>
+              </span>
+              <span className="f">
+                <em>{t.lab.usingUrl}</em>
+                <span className="mono">{activeUpstream?.base_url ?? "—"}</span>
+              </span>
+            </div>
+            <p style={{ fontSize: ".83rem", color: "var(--ink-soft)", marginTop: ".55rem" }}>
+              {isMock || !backendModel
+                ? t.lab.kindMockNote
+                : t.lab.kindRealNote(backendModel)}
+            </p>
           </div>
         </div>
       </section>
@@ -225,11 +256,24 @@ export default function Lab() {
         <section className="section" id="result">
           <header>
             <h2>{t.lab.resultTitle(picked ? t.scenario[picked.titleKey] : "")}</h2>
-            <span className="hint mono">
-              {result.upstream && result.upstream !== "default" ? `${result.upstream} · ` : ""}
-              {result.sessionId}
-            </span>
+            <span className="hint mono">{result.sessionId}</span>
           </header>
+          {/* Where this verdict came from, next to the verdict itself: you should
+              not have to leave for the comparison screen to learn which model
+              produced it. */}
+          <div className="usingbar">
+            <Chip tone={isMock ? "info" : "ok"}>
+              {isMock ? t.lab.kindMock : t.lab.kindReal}
+            </Chip>
+            <span className="f">
+              <em>{t.lab.resultBackend}</em>
+              {activeUpstream?.label ?? result.upstream ?? "—"}
+            </span>
+            <span className="f">
+              <em>{t.lab.resultModel}</em>
+              <span className="mono">{sentModel(result) ?? "—"}</span>
+            </span>
+          </div>
           {result.code || result.error ? (
             <Banner
               error={errorText(t, result.code, result.error)}

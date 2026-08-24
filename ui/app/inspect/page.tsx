@@ -94,6 +94,21 @@ export default function Inspect() {
         </p>
       </div>
 
+      {/* This is the one screen that calls no model. It states that in the same
+          bar the lab uses, so the difference between the two reads in one place. */}
+      <div className="usingbar">
+        <Chip tone="info">{t.inspect.noModel}</Chip>
+        <span className="f" style={{ flex: "1 1 24rem" }}>
+          {t.inspect.noModelNote}
+        </span>
+        {out?.policy && (
+          <span className="f">
+            <em>{t.inspect.policyLabel}</em>
+            <span className="mono">{out.policy}</span>
+          </span>
+        )}
+      </div>
+
       <section className="section">
         <header>
           <h2>{t.inspect.inputs}</h2>

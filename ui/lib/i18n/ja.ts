@@ -186,8 +186,8 @@ const ja: Dict = {
     backendNote1: "以下のシナリオは ",
     backendNoteEmph: "シナリオモック",
     backendNote2:
-      "が再生するものです。実際のモデルを選べば、そのモデルが本当に何を出すかを見ることになります — シナリオ名はそのまま ",
-    backendNote3: " フィールドとして送られます。バックエンドの登録は ",
+      "が再生するものです。実際のモデルを選べば、そのモデルが本当に何を出すかを見ることになります。下の行が今回の実行で送られる ",
+    backendNote3: " の値をそのまま示します。バックエンドの登録は ",
     backendNote4: " 画面で行います。",
 
     streaming: "ストリーミング",
@@ -222,6 +222,20 @@ const ja: Dict = {
       "トークン上限で切れた応答です。パッチ前はこれも「モデルが仕事を終えた」として集計され、回復力の指標を水増ししていました。",
     finalNote: "正常に終了し中身も空でないので、本物の完了です。",
     rawSse: "クライアントが実際に受け取った SSE 原文",
+    using: "いま何を相手に試しているか",
+    usingBackend: "バックエンド",
+    usingModel: "送出される model 値",
+    usingModelScenario: "シナリオ名",
+    usingUrl: "アドレス",
+    usingKind: "種別",
+    kindMock: "モック再生",
+    kindReal: "実モデル",
+    kindMockNote:
+      "下のシナリオ名がそのまま model フィールドとして送られ、モックが再生する失敗の種類を選びます。モデルは一切呼ばれません。",
+    kindRealNote: (m: string) =>
+      `実モデルなので model フィールドには ${m} が入ります。シナリオはどの課題を送るかだけを決め、失敗の内容はこのモデルが実際に出したそのものです。`,
+    resultBackend: "バックエンド",
+    resultModel: "モデル",
   },
 
   inspect: {
@@ -241,6 +255,10 @@ const ja: Dict = {
     toolLabel: "ツール名",
     badSchema: "スキーマが正しい JSON ではありません。",
     inspectFailed: "検査に失敗しました",
+    noModel: "モデル呼び出しなし",
+    noModelNote:
+      "この画面はモデルを一切呼び出しません。プロキシのパーサ・検証器・ポリシーだけをその場で実行するため、結果はモデルやバックエンドの状態に関係なく常に同じです。",
+    policyLabel: "適用中のポリシー",
 
     presets: {
       clean: "正常",

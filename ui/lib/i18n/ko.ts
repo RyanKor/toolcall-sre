@@ -192,8 +192,9 @@ const ko = {
     backendDefault: "기본 백엔드 (--upstream)",
     backendNote1: "아래 시나리오들은 ",
     backendNoteEmph: "시나리오 목업",
-    backendNote2: "이 재생하는 것입니다. 실제 모델을 고르면 그 모델이 실제로 무엇을 내놓는지 보게 됩니다 — 시나리오 이름은 그대로 ",
-    backendNote3: " 필드로 나갑니다. 백엔드 등록은 ",
+    backendNote2:
+      "이 재생하는 것입니다. 실제 모델을 고르면 그 모델이 실제로 무엇을 내놓는지 보게 됩니다. 아래 줄이 이번 실행에서 나가는 ",
+    backendNote3: " 값을 그대로 보여줍니다. 백엔드 등록은 ",
     backendNote4: " 화면에서 합니다.",
 
     streaming: "스트리밍",
@@ -228,6 +229,20 @@ const ko = {
       "토큰 한도로 잘린 응답입니다. 패치 전에는 이것도 '모델이 일을 끝냈다'로 집계되어 회복력 지표를 부풀렸습니다.",
     finalNote: "정상 종료했고 내용도 비어있지 않으므로 진짜 완수입니다.",
     rawSse: "클라이언트가 실제로 받은 SSE 원문",
+    using: "지금 무엇으로 시험하고 있나",
+    usingBackend: "백엔드",
+    usingModel: "나가는 model 값",
+    usingModelScenario: "시나리오 이름",
+    usingUrl: "주소",
+    usingKind: "성격",
+    kindMock: "모의 재생",
+    kindReal: "실제 모델",
+    kindMockNote:
+      "아래 시나리오 이름이 그대로 model 필드로 나가, 목업이 재생할 실패 유형을 고릅니다. 어떤 모델도 호출되지 않습니다.",
+    kindRealNote: (m: string) =>
+      `실제 모델이므로 model 필드로는 ${m} 가 나갑니다. 시나리오는 어떤 과제를 던질지만 정하고, 실패 유형은 이 모델이 실제로 내놓는 그대로입니다.`,
+    resultBackend: "백엔드",
+    resultModel: "모델",
   },
 
   inspect: {
@@ -246,6 +261,10 @@ const ko = {
     toolLabel: "도구 이름",
     badSchema: "스키마가 올바른 JSON이 아닙니다.",
     inspectFailed: "검사 실패",
+    noModel: "모델 호출 없음",
+    noModelNote:
+      "이 화면은 어떤 모델도 부르지 않습니다. 프록시의 파서·검증기·정책만 그 자리에서 돌리므로, 결과는 모델이나 백엔드 상태와 무관하게 언제나 같습니다.",
+    policyLabel: "적용 중인 정책",
 
     presets: {
       clean: "정상",

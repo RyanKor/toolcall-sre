@@ -185,8 +185,8 @@ const zh: Dict = {
     backendNote1: "下面这些场景由",
     backendNoteEmph: "场景模拟后端",
     backendNote2:
-      "回放。若选择真实模型，你看到的就是那个模型实际给出的内容 —— 场景名会原样作为 ",
-    backendNote3: " 字段发出。后端注册在",
+      "回放。若选择真实模型，你看到的就是那个模型实际给出的内容。下面一行会直接显示本次运行发出的 ",
+    backendNote3: " 值。后端注册在",
     backendNote4: "页面完成。",
 
     streaming: "流式",
@@ -220,6 +220,20 @@ const zh: Dict = {
       "被 token 上限截断的响应。打补丁前这也会计为「模型完成了任务」，从而虚高恢复力指标。",
     finalNote: "它主动结束且内容非空，因此是真正的完成。",
     rawSse: "客户端实际收到的 SSE 原文",
+    using: "当前测试的对象",
+    usingBackend: "后端",
+    usingModel: "发出的 model 值",
+    usingModelScenario: "场景名称",
+    usingUrl: "地址",
+    usingKind: "类型",
+    kindMock: "模拟回放",
+    kindReal: "真实模型",
+    kindMockNote:
+      "下方的场景名称会直接作为 model 字段发出，用于选择模拟后端回放的失败类型。不会调用任何模型。",
+    kindRealNote: (m: string) =>
+      `这是真实模型，因此 model 字段发出的是 ${m}。场景只决定发送哪个任务，失败类型则是该模型实际产生的结果。`,
+    resultBackend: "后端",
+    resultModel: "模型",
   },
 
   inspect: {
@@ -237,6 +251,10 @@ const zh: Dict = {
     toolLabel: "工具名",
     badSchema: "schema 不是合法的 JSON。",
     inspectFailed: "检查失败",
+    noModel: "不调用模型",
+    noModelNote:
+      "本页面不会调用任何模型。它只在本地运行代理的解析器、校验器与策略，因此无论使用哪个模型或后端，结果始终一致。",
+    policyLabel: "当前策略",
 
     presets: {
       clean: "正常",

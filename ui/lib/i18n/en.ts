@@ -186,8 +186,8 @@ const en: Dict = {
     backendNote1: "The scenarios below are replayed by the ",
     backendNoteEmph: "scenario mock",
     backendNote2:
-      ". Pick a real model and you see what that model actually emits — the scenario name goes out as the ",
-    backendNote3: " field unchanged. Register backends on the ",
+      ". Pick a real model and you see what that model actually emits. The line below shows the exact ",
+    backendNote3: " value this run sends. Register backends on the ",
     backendNote4: " page.",
 
     streaming: "streaming",
@@ -222,6 +222,20 @@ const en: Dict = {
       "Truncated by the token limit. Before the patch this also counted as 'the model finished the task', inflating the recovery metric.",
     finalNote: "It stopped on purpose and said something, so this is a genuine completion.",
     rawSse: "The raw SSE the client received",
+    using: "What this is testing against",
+    usingBackend: "Backend",
+    usingModel: "Outgoing model field",
+    usingModelScenario: "the scenario name",
+    usingUrl: "Address",
+    usingKind: "Kind",
+    kindMock: "Mock replay",
+    kindReal: "Real model",
+    kindMockNote:
+      "The scenario name below goes out as the model field and picks which failure the mock replays. No model is called.",
+    kindRealNote: (m: string) =>
+      `This is a real model, so the model field carries ${m}. The scenario only decides which task to send — the failure mode is whatever this model actually produces.`,
+    resultBackend: "Backend",
+    resultModel: "Model",
   },
 
   inspect: {
@@ -240,6 +254,10 @@ const en: Dict = {
     toolLabel: "Tool name",
     badSchema: "The schema is not valid JSON.",
     inspectFailed: "Inspection failed",
+    noModel: "No model is called",
+    noModelNote:
+      "This screen calls no model at all. It runs only the proxy's parser, validator and policy, so the result is always the same regardless of which model or backend is up.",
+    policyLabel: "Active policy",
 
     presets: {
       clean: "Valid",

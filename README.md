@@ -2,6 +2,12 @@
 
 **Reliability engineering for local-LLM tool calls.**
 
+> 📖 **Console user guide** (with screenshots, in four languages):
+> [한국어](./docs/user-guide/guide.ko.md) ·
+> [English](./docs/user-guide/guide.en.md) ·
+> [日本語](./docs/user-guide/guide.ja.md) ·
+> [中文](./docs/user-guide/guide.zh.md)
+
 `toolcall-sre` is a small, drop-in **OpenAI-compatible reverse proxy** that sits
 between your agent/harness and any local inference endpoint (vLLM, Ollama, SGLang,
 llama.cpp server). It exists to make **tool calling (function calling) reliable for

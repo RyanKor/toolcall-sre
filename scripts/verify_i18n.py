@@ -106,19 +106,32 @@ html = get("/", header="fr-FR,fr;q=0.9")
 check("지원하지 않는 언어는 기본값으로", 'lang="ko"' in html)
 
 print("\n[7] 시드 데이터가 접속 언어로 만들어지는지")
+# 시드는 설정 파일이 없을 때만 만들어지므로 이 검사는 파일을 지워야 한다.
+# 그 파일에는 사람이 등록해 둔 실제 백엔드 목록이 들어 있으므로, 지우기 전에
+# 보관했다가 반드시 되돌려 놓는다. 검사 한 번이 남의 설정을 날리면 안 된다.
 cfgfile = os.path.join(ROOT, ".tcs-console.json")
-expect = {"en": "Simulated", "ja": "模擬", "zh": "模拟", "ko": "모사"}
-for loc, marker in expect.items():
-    if os.path.exists(cfgfile):
-        os.remove(cfgfile)
-    req = urllib.request.Request(UI + "/api/config")
-    req.add_header("Cookie", f"tcs-locale={loc}")
-    with urllib.request.urlopen(req, timeout=30) as r:
-        cfg = json.load(r)
-    check(f"{loc} 시드 백엔드 라벨", cfg["models"][0]["label"].startswith(marker),
-          cfg["models"][0]["label"])
+saved = None
 if os.path.exists(cfgfile):
-    os.remove(cfgfile)
+    with open(cfgfile, encoding="utf8") as f:
+        saved = f.read()
+
+try:
+    expect = {"en": "Simulated", "ja": "模擬", "zh": "模拟", "ko": "모사"}
+    for loc, marker in expect.items():
+        if os.path.exists(cfgfile):
+            os.remove(cfgfile)
+        req = urllib.request.Request(UI + "/api/config")
+        req.add_header("Cookie", f"tcs-locale={loc}")
+        with urllib.request.urlopen(req, timeout=30) as r:
+            cfg = json.load(r)
+        check(f"{loc} 시드 백엔드 라벨", cfg["models"][0]["label"].startswith(marker),
+              cfg["models"][0]["label"])
+finally:
+    if saved is not None:
+        with open(cfgfile, "w", encoding="utf8") as f:
+            f.write(saved)
+    elif os.path.exists(cfgfile):
+        os.remove(cfgfile)
 
 print("\n" + "=" * 66)
 print(f"  통과 {len(PASS)} / 실패 {len(FAIL)}")

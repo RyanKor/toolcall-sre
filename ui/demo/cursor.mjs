@@ -50,18 +50,25 @@ export const CURSOR_SCRIPT = () => {
 
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-/** 커서 상태. 페이지마다 새로 만든다. */
-export function makeMouse(page, start = { x: 800, y: 450 }) {
+/**
+ * 커서 상태. 페이지마다 새로 만든다.
+ *
+ * speed 는 재생 배속이다. 1.5 를 주면 모든 대기·이동 시간이 1/1.5 로 줄어
+ * 실제 사람이 1.5배 빠르게 조작하는 것처럼 보인다 (동작 자체를 건너뛰지 않는다 —
+ * 이동·클릭·호버가 전부 그대로 일어나고, 그 사이 대기만 압축된다).
+ */
+export function makeMouse(page, start = { x: 800, y: 450 }, { speed = 1 } = {}) {
   const pos = { ...start };
+  const dt = (ms) => Math.max(1, Math.round(ms / speed));
 
   /** 현재 위치에서 (x, y) 까지 보간 이동. 거리에 비례해 걸음 수를 정한다. */
-  async function moveTo(x, y, { speed = 1 } = {}) {
+  async function moveTo(x, y) {
     const dist = Math.hypot(x - pos.x, y - pos.y);
-    const steps = Math.max(8, Math.min(46, Math.round(dist / 22))) ;
+    const steps = Math.max(8, Math.min(46, Math.round(dist / 22)));
     for (let i = 1; i <= steps; i++) {
       const t = easeInOut(i / steps);
       await page.mouse.move(pos.x + (x - pos.x) * t, pos.y + (y - pos.y) * t);
-      await page.waitForTimeout(Math.round(13 / speed));
+      await page.waitForTimeout(dt(13));
     }
     pos.x = x; pos.y = y;
   }
@@ -69,24 +76,24 @@ export function makeMouse(page, start = { x: 800, y: 450 }) {
   /** 요소로 이동한 뒤 잠깐 멈췄다가 누른다. */
   async function click(locator, { settle = 320 } = {}) {
     await locator.scrollIntoViewIfNeeded();
-    await page.waitForTimeout(220);
+    await page.waitForTimeout(dt(220));
     const box = await locator.boundingBox();
     if (!box) throw new Error('요소의 위치를 찾지 못했습니다');
     await moveTo(box.x + box.width / 2, box.y + box.height / 2);
-    await page.waitForTimeout(settle);          // 누르기 직전의 호흡
+    await page.waitForTimeout(dt(settle));       // 누르기 직전의 호흡
     await page.mouse.down();
-    await page.waitForTimeout(90);
+    await page.waitForTimeout(dt(90));
     await page.mouse.up();
   }
 
   /** 클릭 없이 올려두기만 — 강조하고 싶은 지점에 쓴다. */
   async function hover(locator, hold = 900) {
     await locator.scrollIntoViewIfNeeded();
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(dt(200));
     const box = await locator.boundingBox();
     if (!box) return;
     await moveTo(box.x + box.width / 2, box.y + box.height / 2);
-    await page.waitForTimeout(hold);
+    await page.waitForTimeout(dt(hold));
   }
 
   /** 뚝뚝 끊기지 않게 조금씩 굴리는 스크롤. */
@@ -94,15 +101,15 @@ export function makeMouse(page, start = { x: 800, y: 450 }) {
     const dir = Math.sign(total);
     for (let done = 0; done < Math.abs(total); done += chunk) {
       await page.mouse.wheel(0, dir * chunk);
-      await page.waitForTimeout(delay);
+      await page.waitForTimeout(dt(delay));
     }
-    await page.waitForTimeout(320);
+    await page.waitForTimeout(dt(320));
   }
 
   /** 화면에 커서를 처음 등장시킨다. */
   async function enter() {
     await page.mouse.move(start.x, start.y);
-    await page.waitForTimeout(260);
+    await page.waitForTimeout(dt(260));
   }
 
   return { moveTo, click, hover, scroll, enter, pos };

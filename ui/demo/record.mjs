@@ -9,9 +9,15 @@ const BASE = process.env.TCS_CONSOLE ?? 'http://127.0.0.1:3100';
 const OUT  = process.env.TCS_OUT ?? './demo/out';
 const W = 1600, H = 900;
 
-// 장면 사이 호흡. 나레이션 없이도 읽히도록 넉넉하게.
-const beat = (p, ms = 2200) => p.waitForTimeout(ms);
-const read = (p, ms = 4200) => p.waitForTimeout(ms);
+// 재생 배속. 1.5 를 주면 대기 시간이 1/1.5 로 줄어 영상이 그만큼 짧아진다.
+// 장면 자체를 건너뛰지 않는다 — 같은 SPEED 를 makeMouse 에도 넘겨, 커서 이동·
+// 클릭·호버·스크롤도 이 화면의 dt() 와 같은 비율로 함께 압축되게 한다.
+const SPEED = Number(process.env.TCS_SPEED ?? 1.5);
+const dt = (ms) => Math.max(1, Math.round(ms / SPEED));
+
+// 장면 사이 호흡. 나레이션 없이도 읽히도록 넉넉하게 잡고, SPEED 로 스케일한다.
+const beat = (p, ms = 2200) => p.waitForTimeout(dt(ms));
+const read = (p, ms = 4200) => p.waitForTimeout(dt(ms));
 
 const browser = await chromium.launch();
 const context = await browser.newContext({
@@ -24,7 +30,7 @@ const context = await browser.newContext({
 await context.addInitScript(CURSOR_SCRIPT);
 
 const page = await context.newPage();
-const m = makeMouse(page, { x: W / 2, y: H / 2 });
+const m = makeMouse(page, { x: W / 2, y: H / 2 }, { speed: SPEED });
 
 /** 왼쪽 메뉴를 커서로 눌러 화면을 이동한다. */
 async function navTo(label) {
@@ -39,7 +45,7 @@ async function runScenario(title, { dwell = 4200 } = {}) {
   const card = page.locator('.panel', { hasText: title }).first();
   await m.hover(card.locator('.head'), 650);              // 카드 제목을 먼저 짚는다
   await m.click(card.getByRole('button', { name: '실행' }));
-  await page.locator('#result').waitFor({ state: 'visible', timeout: 15000 });
+  await page.locator('#result').waitFor({ state: 'visible', timeout: 60000 });
   await page.locator('#result').scrollIntoViewIfNeeded();
   await read(page, dwell);
 }
@@ -65,6 +71,15 @@ await read(page, 4200);                                   // 창작 경고에 �
 
 // ── 장면 4 · 실시간 응답에서도 작동
 await runScenario('스트리밍 + 인사말 혼입', { dwell: 4600 });
+
+// ── 장면 4.5 · 복잡한 도구 호출 — 실전 과제로 확장
+//
+// 나머지 16개 카드는 전부 flat get_weather 하나로 파싱·복구·정책을 시험한다.
+// 이 둘은 중첩 객체 · 배열 · enum이 섞인 스키마로, 실제 모델이 이 정도 구조를
+// 흐트러뜨리지 않고 만들어 내는지를 본다. 결과는 각본이 아니라 관측이므로
+// 카드 배지도 "모델에 따라 다름"이라고 정직하게 적는다.
+await runScenario('복잡한 일정 예약 — 정보 충분', { dwell: 5200 });
+await runScenario('복잡한 일정 예약 — 참석자 정보 누락', { dwell: 5600 });
 
 // ── 장면 5 · 기록 : 지어낸 것만 골라 보기
 await navTo('블랙박스');

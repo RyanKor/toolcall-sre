@@ -22,6 +22,12 @@ interface RunRequest {
   model?: string;
   task?: string;
   stream?: boolean;
+  /**
+   * Overrides the default weather/time tools. A scenario testing a harder
+   * schema (nested objects, arrays) carries its own tool list so the other
+   * scenarios keep seeing exactly the two tools they were written against.
+   */
+  tools?: unknown[];
   /** Registry alias naming which backend serves this run. */
   upstream?: string;
   /** Prefix for the session id, so a burst can be grouped and found later. */
@@ -60,7 +66,7 @@ function reassembleStream(body: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const { scenario, model, task, stream = false, upstream, sessionPrefix }: RunRequest =
+  const { scenario, model, task, stream = false, upstream, sessionPrefix, tools }: RunRequest =
     await req.json();
   const sessionId = `${sessionPrefix ?? "lab"}-${scenario}-${Date.now().toString(36)}-${Math.random()
     .toString(36)
@@ -73,7 +79,7 @@ export async function POST(req: NextRequest) {
       { role: "system", content: "You are a helpful assistant that uses tools." },
       { role: "user", content: task || DEFAULT_TASK },
     ],
-    tools: TOOLS,
+    tools: tools && tools.length ? tools : TOOLS,
     ...(stream ? { stream: true } : {}),
   };
 

@@ -546,6 +546,7 @@ cargo run --release -- \\
     refused: "정책상 거부",
     failed: "수리 실패",
     final: "최종 답변",
+    observed: "모델에 따라 다름",
   },
 
   group: {
@@ -555,6 +556,7 @@ cargo run --release -- \\
     argshape: "인자 형태",
     finish: "응답 종료",
     streaming: "스트리밍",
+    complex: "복잡한 도구",
   },
 
   scenario: {
@@ -599,6 +601,13 @@ cargo run --release -- \\
     streamProseNote: "델타를 재조립해 복구한 뒤 정상 SSE로 다시 발행합니다.",
     streamMissingTitle: "스트리밍 + 정보 결손",
     streamMissingNote: "스트리밍에서도 창작 탐지가 동일하게 동작해야 합니다.",
+
+    scheduleFullTitle: "복잡한 일정 예약 — 정보 충분",
+    scheduleFullNote:
+      "중첩 객체·배열·enum이 섞인 스키마입니다. 필요한 정보를 전부 문장에 담아 보냅니다. 실제 모델이 이 깊이의 구조를 흐트러뜨리지 않고 만들어 내는지 시험합니다.",
+    scheduleBlindTitle: "복잡한 일정 예약 — 참석자 정보 누락",
+    scheduleBlindNote:
+      "정확한 시각·통화 링크·참석자 이메일과 역할을 일부러 비웠습니다. 중첩된 배열 항목 안에서도 창작 탐지가 똑같이 작동하는지, 실제 모델이 값을 지어내는지 되묻는지를 봅니다.",
 
     emitsFenced: "```json\\n{...}\\n```",
     emitsObjectArgs: '{"location":"Seoul","unit":"celsius"} (문자열이 아닌 객체)',

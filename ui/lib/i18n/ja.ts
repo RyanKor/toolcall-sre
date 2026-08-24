@@ -544,6 +544,7 @@ cargo run --release -- \\
     refused: "ポリシーにより拒否",
     failed: "修復失敗",
     final: "最終回答",
+    observed: "モデルにより異なる",
   },
 
   group: {
@@ -553,6 +554,7 @@ cargo run --release -- \\
     argshape: "引数の形",
     finish: "応答の終わり方",
     streaming: "ストリーミング",
+    complex: "複雑なツール",
   },
 
   scenario: {
@@ -599,6 +601,13 @@ cargo run --release -- \\
     streamProseNote: "デルタを組み立て直して復旧し、正常な SSE として再送出します。",
     streamMissingTitle: "ストリーミング + 情報の欠落",
     streamMissingNote: "ストリーミングでも捏造検出が同じように動く必要があります。",
+
+    scheduleFullTitle: "複雑な予約 — 情報は十分",
+    scheduleFullNote:
+      "入れ子オブジェクト・配列・二階層下の enum が混じったスキーマです。必要な情報はすべて文に含めて送ります。実モデルがこの深さの構造を崩さず組み立てられるかを試します。",
+    scheduleBlindTitle: "複雑な予約 — 参加者情報が欠落",
+    scheduleBlindNote:
+      "正確な時刻・通話リンク・参加者双方のメールと役割をわざと空けています。入れ子の配列項目の中でも創作検知が同じように働くか、実モデルが値を作り出すのか聞き返すのかを見ます。",
 
     emitsFenced: "```json\\n{...}\\n```",
     emitsObjectArgs: '{"location":"Seoul","unit":"celsius"}（文字列ではなくオブジェクト）',

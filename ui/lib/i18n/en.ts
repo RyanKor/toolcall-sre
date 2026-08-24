@@ -541,6 +541,7 @@ cargo run --release -- \\
     refused: "refused by policy",
     failed: "repair fails",
     final: "final answer",
+    observed: "Varies by model",
   },
 
   group: {
@@ -550,6 +551,7 @@ cargo run --release -- \\
     argshape: "Arguments shape",
     finish: "Response ending",
     streaming: "Streaming",
+    complex: "Complex tool",
   },
 
   scenario: {
@@ -596,6 +598,13 @@ cargo run --release -- \\
     streamProseNote: "The deltas are reassembled, recovered, and re-emitted as valid SSE.",
     streamMissingTitle: "Streaming with missing information",
     streamMissingNote: "Fabrication detection must work identically over a stream.",
+
+    scheduleFullTitle: "Complex booking — fully specified",
+    scheduleFullNote:
+      "A schema with a nested object, an array of objects and an enum two levels down. Everything the schema needs is spelled out in the sentence. Tests whether a real model can hold this much structure together.",
+    scheduleBlindTitle: "Complex booking — attendees missing",
+    scheduleBlindNote:
+      "The exact time, the call link, and both attendees' emails and roles are left out on purpose. Watches whether fabrication detection still works inside a nested array item, and whether the model invents values or asks.",
 
     emitsFenced: "```json\\n{...}\\n```",
     emitsObjectArgs: '{"location":"Seoul","unit":"celsius"} (an object, not a string)',

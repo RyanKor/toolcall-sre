@@ -81,9 +81,11 @@ export default function Lab() {
   const [upstream, setUpstream] = useState<string>("");
 
   // Prefer a backend that replays the scenarios, since that is what the cards
-  // below describe. When none is registered — the usual case once real models
-  // are wired up — fall back to whatever `--upstream` points at and let the
-  // strip above say plainly that these runs hit a real model.
+  // below describe. Otherwise pick the first *registered* real backend — one
+  // that carries its own model id — rather than the CLI's --upstream default,
+  // which has none. Leaving that gap meant a scenario name like "clean" got
+  // sent as `model` to a real backend that had never heard of it: every run
+  // came back 404, wrapped as a 502 by the time it reached the browser.
   useEffect(() => {
     fetch("/api/proxy/upstreams", { cache: "no-store" })
       .then((r) => r.json())
@@ -95,14 +97,20 @@ export default function Lab() {
           const replays = list.find((u: { base_url?: string }) =>
             (u.base_url ?? "").includes("/api/mock/"),
           );
-          return replays ? replays.alias : "";
+          if (replays) return replays.alias;
+          const registered = list.find(
+            (u: { is_default: boolean; default_model?: string | null }) =>
+              !u.is_default && u.default_model,
+          );
+          return registered ? registered.alias : "";
         });
       })
       .catch(() => {});
   }, []);
 
   // Which backend this run goes to. With no selection that is the default one
-  // named by --upstream.
+  // named by --upstream — which is the one case with no model id of its own,
+  // so a run against it falls back to the scenario name (see modelFor below).
   const activeUpstream =
     upstreams.find((u) => u.alias === upstream) ?? upstreams.find((u) => u.is_default);
   // The mock reads the scenario name out of `model` to pick which failure to
@@ -126,6 +134,7 @@ export default function Lab() {
           scenario: s.id,
           model: modelFor(s),
           task: useTask,
+          tools: s.tools,
           stream: s.stream ?? false,
           upstream: upstream || undefined,
         }),
@@ -460,6 +469,6 @@ function toneFor(e: string): Tone {
   if (e === "fabricated") return "invent";
   if (e === "failed") return "bad";
   if (e === "repaired" || e === "refused") return "warn";
-  if (e === "recovered") return "info";
+  if (e === "recovered" || e === "observed") return "info";
   return "ok";
 }

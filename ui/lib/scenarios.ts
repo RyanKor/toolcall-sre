@@ -23,7 +23,9 @@ export type Expectation =
   | "fabricated"    // repaired, but the value came from nowhere — must be flagged
   | "refused"       // policy declines to invent; reported, not guessed
   | "failed"        // unrepairable
-  | "final";        // no tool call at all
+  | "final"         // no tool call at all
+  | "observed";     // no scripted answer — a real model decides, so the card
+                     // states that rather than predicting a verdict it cannot know
 
 export type GroupKey = keyof Dict["group"];
 
@@ -44,11 +46,88 @@ export interface Scenario {
   /** Task text sent as the user message — decides whether values are recoverable. */
   task?: string;
   tool?: string;
+  /**
+   * Overrides the default `TOOLS` sent with the request. A scenario that needs
+   * a schema the mock cannot replay — nested objects, arrays, several required
+   * fields at once — carries its own tool list so it does not also change what
+   * the other 16 scenarios expose to the model.
+   */
+  tools?: unknown[];
 }
 
 export const DEFAULT_TASK = "Weather in Seoul in celsius";
 /** A task that deliberately does NOT contain the values the schema requires. */
 export const BLIND_TASK = "Tell me the temperature";
+
+/**
+ * A schema deliberately heavier than get_weather's two flat strings: a required
+ * nested object, a required array of objects with its own nested `required`,
+ * and an enum two levels down. This is the shape real tool-calling work
+ * actually looks like — the flat weather tool tests parsing and repair, this
+ * one tests whether a model can hold a non-trivial structure together at all.
+ */
+export const MEETING_SCHEMA = {
+  type: "object",
+  properties: {
+    title: { type: "string", description: "Meeting title" },
+    start_time: {
+      type: "string",
+      description: "ISO 8601 date-time, e.g. 2026-08-25T15:00:00+09:00",
+    },
+    duration_minutes: { type: "integer", minimum: 15, maximum: 480 },
+    location: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: ["video_call", "in_person"] },
+        value: { type: "string", description: "URL for video_call, address for in_person" },
+      },
+      required: ["kind", "value"],
+      additionalProperties: false,
+    },
+    attendees: {
+      type: "array",
+      minItems: 1,
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          email: { type: "string" },
+          role: { type: "string", enum: ["required", "optional"] },
+        },
+        required: ["name", "email", "role"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["title", "start_time", "duration_minutes", "location", "attendees"],
+  additionalProperties: false,
+} as const;
+
+export const COMPLEX_TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "schedule_meeting",
+      description: "Schedule a meeting and invite attendees",
+      parameters: MEETING_SCHEMA,
+    },
+  },
+];
+
+/** Every field the schema requires is spelled out — nothing for a model to guess. */
+const MEETING_TASK_FULL =
+  "Schedule a 30-minute video call titled 'Design Review' at 2026-08-25T15:00:00+09:00. " +
+  "Link: https://meet.example.com/design-review. Attendees: Alice Kim (alice@example.com, " +
+  "required), Bob Lee (bob@example.com, optional).";
+
+/**
+ * The exact time, the call link and both attendees' emails and roles are all
+ * missing. A model with nothing to go on either asks, or fills four separate
+ * gaps at once — the nested-nested version of the blind weather task above.
+ */
+const MEETING_TASK_BLIND =
+  "Schedule a meeting titled 'Design Review' next Tuesday at 3pm for 30 minutes " +
+  "with Alice and Bob over video call.";
 
 export const SCENARIOS: Scenario[] = [
   {
@@ -205,6 +284,30 @@ export const SCENARIOS: Scenario[] = [
     stream: true,
     task: BLIND_TASK,
   },
+  {
+    id: "schedule-full",
+    key: "schedule-full",
+    group: "complex",
+    titleKey: "scheduleFullTitle",
+    noteKey: "scheduleFullNote",
+    emits: MEETING_TASK_FULL,
+    expect: "observed",
+    task: MEETING_TASK_FULL,
+    tool: "schedule_meeting",
+    tools: COMPLEX_TOOLS,
+  },
+  {
+    id: "schedule-blind",
+    key: "schedule-blind",
+    group: "complex",
+    titleKey: "scheduleBlindTitle",
+    noteKey: "scheduleBlindNote",
+    emits: MEETING_TASK_BLIND,
+    expect: "observed",
+    task: MEETING_TASK_BLIND,
+    tool: "schedule_meeting",
+    tools: COMPLEX_TOOLS,
+  },
 ];
 
 /** Order the lab renders the groups in. */
@@ -215,6 +318,7 @@ export const GROUP_ORDER: GroupKey[] = [
   "argshape",
   "finish",
   "streaming",
+  "complex",
 ];
 
 export const WEATHER_SCHEMA = {

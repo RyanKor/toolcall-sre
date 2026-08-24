@@ -533,6 +533,7 @@ cargo run --release -- \\
     refused: "按策略拒绝",
     failed: "修复失败",
     final: "最终回答",
+    observed: "因模型而异",
   },
 
   group: {
@@ -542,6 +543,7 @@ cargo run --release -- \\
     argshape: "参数形态",
     finish: "响应结束方式",
     streaming: "流式",
+    complex: "复杂工具",
   },
 
   scenario: {
@@ -584,6 +586,13 @@ cargo run --release -- \\
     streamProseNote: "把增量重新拼装、挽回，再作为合法 SSE 重新发出。",
     streamMissingTitle: "流式 + 信息缺失",
     streamMissingNote: "在流式场景下，编造检测也必须同样生效。",
+
+    scheduleFullTitle: "复杂预订 — 信息完整",
+    scheduleFullNote:
+      "包含嵌套对象、对象数组以及两层深处枚举值的复杂 schema。句子里已给出全部所需信息。用来测试真实模型能否不打乱这么深的结构。",
+    scheduleBlindTitle: "复杂预订 — 缺少参会者信息",
+    scheduleBlindNote:
+      "故意省略了准确时间、通话链接以及两位参会者的邮箱和角色。观察创作检测在嵌套数组项内是否同样有效，以及真实模型是编造数值还是反问。",
 
     emitsFenced: "```json\\n{...}\\n```",
     emitsObjectArgs: '{"location":"Seoul","unit":"celsius"}（是对象，不是字符串）',

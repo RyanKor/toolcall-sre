@@ -21,12 +21,17 @@ pub struct Histogram {
     inf: AtomicU64,
     sum_ms: AtomicU64,
     count: AtomicU64,
+    /// The largest observation seen, tracked separately from the buckets so a
+    /// quantile that falls past the last bound has a real number to report —
+    /// see the comment on `quantile` for why `u64::MAX` was wrong here.
+    max_ms: AtomicU64,
 }
 
 impl Histogram {
     pub fn observe(&self, ms: u64) {
         self.count.fetch_add(1, Ordering::Relaxed);
         self.sum_ms.fetch_add(ms, Ordering::Relaxed);
+        self.max_ms.fetch_max(ms, Ordering::Relaxed);
         let mut placed = false;
         for (i, bound) in LATENCY_BUCKETS_MS.iter().enumerate() {
             if ms <= *bound {
@@ -46,6 +51,15 @@ impl Histogram {
 
     /// Interpolation-free quantile: the upper bound of the bucket the quantile
     /// falls in. Coarse by construction, and honest about it.
+    ///
+    /// The buckets top out at `LATENCY_BUCKETS_MS`'s last bound (30s). A
+    /// quantile landing past it used to fall through to `Some(u64::MAX)` —
+    /// meant as "off the chart", but a JSON consumer has no way to read
+    /// 18446744073709551615 as anything but a broken number, which is exactly
+    /// the kind of report this module exists to not produce. Once a slow real
+    /// model (a reasoning model answering in over a minute, say) pushed an
+    /// observation past 30s, the dashboard's own latency tile went dishonest.
+    /// Reporting the largest value actually observed keeps the number real.
     fn quantile(&self, q: f64) -> Option<u64> {
         let total = self.count();
         if total == 0 {
@@ -59,7 +73,7 @@ impl Histogram {
                 return Some(*bound);
             }
         }
-        Some(u64::MAX)
+        Some(self.max_ms.load(Ordering::Relaxed))
     }
 
     fn mean_ms(&self) -> Option<f64> {
@@ -292,5 +306,19 @@ mod tests {
         assert_eq!(h.quantile(0.50), Some(25));
         assert_eq!(h.quantile(0.99), Some(25));
         assert_eq!(h.quantile(1.0), Some(30_000));
+    }
+
+    #[test]
+    fn quantile_past_the_last_bucket_reports_the_real_max_not_u64_max() {
+        // A slow reasoning model can answer well past the 30s top bucket.
+        // The quantile used to fall through to u64::MAX (18446744073709551615)
+        // for "off the chart" — technically not wrong, but unreadable as a
+        // latency number and dishonest for a project whose whole premise is
+        // that a dashboard should not report numbers nobody can act on.
+        let h = Histogram::default();
+        h.observe(5_000);
+        h.observe(88_000);
+        assert_eq!(h.quantile(0.99), Some(88_000));
+        assert_ne!(h.quantile(0.99), Some(u64::MAX));
     }
 }

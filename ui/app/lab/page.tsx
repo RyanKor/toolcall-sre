@@ -69,7 +69,9 @@ export default function Lab() {
   const [result, setResult] = useState<RunResult | null>(null);
   const [picked, setPicked] = useState<Scenario | null>(null);
   const [task, setTask] = useState(DEFAULT_TASK);
-  const [upstreams, setUpstreams] = useState<{ alias: string; label: string; is_default: boolean }[]>([]);
+  const [upstreams, setUpstreams] = useState<
+    { alias: string; label: string; is_default: boolean; base_url?: string; default_model?: string | null }[]
+  >([]);
   const [upstream, setUpstream] = useState<string>("");
 
   // The scenarios below only mean anything against a backend that replays them,
@@ -89,6 +91,17 @@ export default function Lab() {
       .catch(() => {});
   }, []);
 
+  // Which backend this run goes to. With no selection that is the default one
+  // named by --upstream.
+  const activeUpstream =
+    upstreams.find((u) => u.alias === upstream) ?? upstreams.find((u) => u.is_default);
+  // The mock reads the scenario name out of `model` to pick which failure to
+  // replay. Sending that same name to a real backend asks for a model it has
+  // never heard of and comes back 404 — so the two cases split here.
+  const isMock = (activeUpstream?.base_url ?? "").includes("/api/mock/");
+  const backendModel = activeUpstream?.default_model ?? null;
+  const modelFor = (s: Scenario) => (isMock || !backendModel ? s.id : backendModel);
+
   const run = async (s: Scenario) => {
     const key = s.key;
     setRunning(key);
@@ -101,6 +114,7 @@ export default function Lab() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           scenario: s.id,
+          model: modelFor(s),
           task: useTask,
           stream: s.stream ?? false,
           upstream: upstream || undefined,
@@ -160,6 +174,7 @@ export default function Lab() {
                 {t.lab.backendNote4}
               </p>
             </div>
+
           </div>
         </div>
       </section>

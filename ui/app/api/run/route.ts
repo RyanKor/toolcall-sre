@@ -12,8 +12,14 @@ import { proxyBase } from "@/lib/proxy";
 import { DEFAULT_TASK, TOOLS } from "@/lib/scenarios";
 
 interface RunRequest {
-  /** Sent as `model`. For the scenario mock this also picks the failure mode. */
+  /** Identifies the scenario. For the scenario mock this also picks the failure mode. */
   scenario: string;
+  /**
+   * What actually goes out in the `model` field. The scenario mock needs the
+   * scenario name (that is how it selects a failure); a real backend needs its
+   * own model id, or it answers 404 for a model it has never heard of.
+   */
+  model?: string;
   task?: string;
   stream?: boolean;
   /** Registry alias naming which backend serves this run. */
@@ -54,14 +60,15 @@ function reassembleStream(body: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const { scenario, task, stream = false, upstream, sessionPrefix }: RunRequest = await req.json();
+  const { scenario, model, task, stream = false, upstream, sessionPrefix }: RunRequest =
+    await req.json();
   const sessionId = `${sessionPrefix ?? "lab"}-${scenario}-${Date.now().toString(36)}-${Math.random()
     .toString(36)
     .slice(2, 7)}`;
   const PROXY_BASE = await proxyBase();
 
   const body = {
-    model: scenario,
+    model: model || scenario,
     messages: [
       { role: "system", content: "You are a helpful assistant that uses tools." },
       { role: "user", content: task || DEFAULT_TASK },
